@@ -1,0 +1,9 @@
+*.vcf
+*.log
+*.gz
+*.vcf.idx
+*.gz.1
+*.txt
+*.fasta
+*.dict
+ 

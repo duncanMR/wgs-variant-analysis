@@ -1,0 +1,97 @@
+#+TITLE:  Master's project data acquisition and initial processing
+#+AUTHOR: Duncan Mbuli-Robertson
+#+EMAIL: duncanr19@gmail.com
+
+My project involves six Whole Genome Sequencing samples. Three of them are
+located on the SAMRC FTP server and the other three were sent to me via
+OneDrive. We start by downloading the samples from the FTP server
+#+BEGIN_SRC shell
+duncan@DESKTOP-EL37DHG:~/masters/data$ 
+  sftp drobertson@samrc-ftp.samrc.ac.za
+drobertson@samrc-ftp.samrc.ac.za's password:************
+Connected to samrc-ftp.samrc.ac.za.
+sftp> ls
+ls
+Pharm Results    
+sftp> cd "Pharm Results"
+cd "Pharm Results"
+sftp> ls
+ls
+X6570  X6597  X6602  
+sftp> get X6570/X6570.vcf
+get X6570/X6570.vcf
+Fetching /FTP_Data/Pharm/Pharm Results/X6570/X6570.vcf to X6570.vcf
+/FTP_Data/Pharm/Pharm Results/X6570/X6570.vcf                         100% 1037MB 608.9KB/s   29:04    
+sftp> get X6597/X6597.vcf
+get X6597/X6597.vcf
+Fetching /FTP_Data/Pharm/Pharm Results/X6597/X6597.vcf to X6597.vcf
+/FTP_Data/Pharm/Pharm Results/X6597/X6597.vcf                         100% 1019MB 894.7KB/s   19:26    
+#+END_SRC
+
+#+BEGIN_SRC shell
+ls
+#+END_SRC
+
+#+RESULTS:
+| X5085.vcf           |
+| X6075.vcf           |
+| X6570.vcf           |
+| X6597.vcf           |
+| X6602.vcf           |
+| data_processing.org |
+
+Now let's check what reference sequence the files were aligned to. We need to
+extract the --reference argument from the variant call command stored in the
+header of each VCF. I wrote a simple script for this purpose:
+
+#+BEGIN_SRC shell
+  ls *.vcf | xargs -n1 ../scripts/reference_extract.sh      
+#+END_SRC
+
+#+RESULTS:
+| X5085.vcf: | --reference | hg38 |
+| X6075.vcf: | --reference | hg38 |
+| X6570.vcf: | --reference | hg19 |
+| X6597.vcf: | --reference | hg19 |
+| X6602.vcf: | --reference | hg19 |
+
+We have a mix of hg19 and hg38; it will make the annotation and prioritisation
+process simpler to liftover the hg19-referenced files to the more modern hg38
+standard. We will use the picardtools vcf liftover tool incorporated into gatk.
+We need the corresponding chain file first. 
+#+BEGIN_SRC shell
+  wget https://hgdownload.cse.ucsc.edu/goldenpath/hg19/liftOver/hg19ToHg38.over.chain.gz 
+  gsutil cp gs://genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.fasta . 
+  gsutil cp gs://genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dict .
+#+END_SRC
+
+#+RESULTS:
+Now we can liftover using a simple shell script which stores all console command
+output into a log file for that sample:
+#+BEGIN_SRC shell
+../scripts/liftover.sh X6570.vcf
+../scripts/liftover.sh X6597.vcf
+../scripts/liftover.sh X6602.vcf
+#+END_SRC
+
+To check whether the liftover was successful, we can check the list of rejected
+variants, which includes information as to why they were rejected. To extract
+relevant data, I wrote a simple shell script
+#+BEGIN_SRC shell
+  ../scripts/liftover_check.sh X6602 | tee X6602_liftdata.txt 
+  ../scripts/liftover_check.sh X6597 > X6597_liftdata.txt 
+  ../scripts/liftover_check.sh X6570 > X6570_liftdata.txt 
+#+END_SRC
+
+#+RESULTS:
+|   X6602 | sample                         |
+| 4810703 | total_hg19                     |
+| 4690338 | total_hg38                     |
+|  120365 | total_rejects                  |
+| 4534152 | npass_hg19                     |
+| 4455675 | npass_hg38                     |
+|      13 | CannotLiftOver                 |
+|     193 | IndelStraddlesMultipleIntevals |
+|   15458 | MismatchedRefAllele            |
+|  104701 | NoTarget                       |
+
