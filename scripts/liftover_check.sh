@@ -13,13 +13,13 @@ fi
 vcf_hg19="$1.vcf"
 vcf_hg38="$1_hg38.vcf"
 vcf_rejects="$1_rejects.vcf"
-echo "$1 sample"
+echo "$1 Sample"
 #count rows which are not metadata
-echo "$(grep -cv "^#" $vcf_hg19) total_hg19"
-echo "$(grep -cv "^#" $vcf_hg38) total_hg38"
-echo "$(grep -cv "^#" $vcf_rejects) total_rejects"
-echo "$(grep -c "PASS" $vcf_hg19) npass_hg19"
-echo "$(grep -c "PASS" $vcf_hg38) npass_hg38"
+echo "$(grep -cv "^#" $vcf_hg19) TotalVariantsHG19"
+echo "$(grep -cv "^#" $vcf_hg38) TotalVariantsHG38"
+echo "$(grep -cv "^#" $vcf_rejects) TotalLiftoverRejects"
+echo "$(grep -c "PASS" $vcf_hg19) TotalPASSVariantsHG19"
+echo "$(grep -c "PASS" $vcf_hg38) TotalPASSVariantsHG38"
 
 #extract info column, split annotations into separate lines with sed,
 #count unique annotations

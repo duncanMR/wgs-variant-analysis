@@ -95,3 +95,51 @@ relevant data, I wrote a simple shell script
 |   15458 | MismatchedRefAllele            |
 |  104701 | NoTarget                       |
 
+#+BEGIN_SRC R :session *R:masters*
+  setwd('/home/duncan/masters/data')
+  library(tidyverse)
+  X6602_lift <- read.table("X6602_liftdata.txt")
+  X6597_lift <- read.table("X6597_liftdata.txt")
+  X6570_lift <- read.table("X6570_liftdata.txt")
+  lift_data_src <- left_join(X6602_lift,X6597_lift, by="V2") %>%
+                 left_join(., X6570_lift, by="V2")
+  head(lift_data_src)
+#+END_SRC
+
+#+RESULTS:
+|   X6602 | Sample                |   X6597 |   X6570 |
+| 4810703 | TotalVariantsHG19     | 4750442 | 4831366 |
+| 4690338 | TotalVariantsHG38     | 4728295 | 4712646 |
+|  120365 | TotalLiftoverRejects  |   22147 |  118720 |
+| 4534152 | TotalPASSVariantsHG19 | 4513993 | 4544544 |
+| 4455675 | TotalPASSVariantsHG38 | 4495061 | 4468118 |
+
+Now we need to transpose the data and identify the second column as the header.
+We can then plot the most salient data for review:
+
+#+BEGIN_SRC R :session *R:masters*
+  lift_data <- setNames(data.frame(t(lift_data_src[,-2])), lift_data_src[,2]) %>%
+    mutate_at(c(2:10), as.numeric) %>%
+    mutate("All variants" = (TotalVariantsHG19 - TotalVariantsHG38)/TotalVariantsHG19) %>%
+    mutate("PASS variants only" = (TotalPASSVariantsHG19 - TotalPASSVariantsHG38)/TotalPASSVariantsHG19)
+
+  p1 <- lift_data %>% select(Sample,"All variants","PASS variants only") %>%
+    gather(ErrorType, ErrorRate, -Sample) %>%
+    ggplot(aes(fill=Sample, y=ErrorRate, x=ErrorType))+
+    geom_bar(position="dodge", stat="identity")+
+    scale_y_continuous(labels = scales::percent)+
+    xlab("\nType of conversion rate")+ylab("Error rate")+
+    theme_bw()
+
+  p2 <- lift_data %>% select(Sample, NoTarget, MismatchedRefAllele) %>%
+    gather(ErrorType, Count, -Sample) %>%
+    ggplot(aes(fill=Sample, y=Count, x=ErrorType))+
+    geom_bar(position="dodge", stat="identity")+
+    xlab("\nType of error")+theme_bw()
+
+  library(ggpubr)
+  ggarrange(p1, p2, ncol=2,nrow=1, common.legend = TRUE, legend="right")
+  ggsave(path = "figs", filename = "liftover.pdf", width = 20, height = 10, units="cm")
+#+END_SRC
+
+#+RESULTS:

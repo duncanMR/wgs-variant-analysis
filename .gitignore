@@ -6,4 +6,5 @@
 *.txt
 *.fasta
 *.dict
+data/figs/*
  
