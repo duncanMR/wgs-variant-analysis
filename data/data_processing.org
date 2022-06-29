@@ -1,7 +1,7 @@
-#+TITLE:  Master's project data acquisition and initial processing
+#+TITLE:  Master's project data acquisition and proof of concept analysis
 #+AUTHOR: Duncan Mbuli-Robertson
 #+EMAIL: duncanr19@gmail.com
-
+* Data acquisition
 My project involves six Whole Genome Sequencing samples. Three of them are
 located on the SAMRC FTP server and the other three were sent to me via
 OneDrive. We start by downloading the samples from the FTP server
@@ -55,6 +55,7 @@ header of each VCF. I wrote a simple script for this purpose:
 | X6597.vcf: | --reference | hg19 |
 | X6602.vcf: | --reference | hg19 |
 
+* Lifting over
 We have a mix of hg19 and hg38; it will make the annotation and prioritisation
 process simpler to liftover the hg19-referenced files to the more modern hg38
 standard. We will use the picardtools vcf liftover tool incorporated into gatk.
@@ -117,7 +118,7 @@ relevant data, I wrote a simple shell script
 Now we need to transpose the data and identify the second column as the header.
 We can then plot the most salient data for review:
 
-#+BEGIN_SRC R :session *R:masters*
+#+BEGIN_SRC R :session *R:masters* 
   lift_data <- setNames(data.frame(t(lift_data_src[,-2])), lift_data_src[,2]) %>%
     mutate_at(c(2:10), as.numeric) %>%
     mutate("All variants" = (TotalVariantsHG19 - TotalVariantsHG38)/TotalVariantsHG19) %>%
@@ -128,18 +129,233 @@ We can then plot the most salient data for review:
     ggplot(aes(fill=Sample, y=ErrorRate, x=ErrorType))+
     geom_bar(position="dodge", stat="identity")+
     scale_y_continuous(labels = scales::percent)+
-    xlab("\nType of conversion rate")+ylab("Error rate")+
+    xlab("\nVariant subgroup")+ylab("Liftover conversion error rate")+
     theme_bw()
 
   p2 <- lift_data %>% select(Sample, NoTarget, MismatchedRefAllele) %>%
     gather(ErrorType, Count, -Sample) %>%
     ggplot(aes(fill=Sample, y=Count, x=ErrorType))+
     geom_bar(position="dodge", stat="identity")+
-    xlab("\nType of error")+theme_bw()
+    xlab("\nType of liftover error")+theme_bw()
 
   library(ggpubr)
   ggarrange(p1, p2, ncol=2,nrow=1, common.legend = TRUE, legend="right")
-  ggsave(path = "figs", filename = "liftover.pdf", width = 20, height = 10, units="cm")
+  ggsave(path = "figs", filename = "liftover.png", width = 20, height = 10, units="cm")
 #+END_SRC
 
 #+RESULTS:
+: figs/liftover.png
+
+#+CAPTION: Results of the error analysis for the liftover of three samples from hg19 to hg38.
+#+attr_html: :width 800px
+[[https://i.ibb.co/znj8GP1/liftover.png]]
+
+We can see in Figure 1a that X6597 had an exceptionally low error rate for liftover
+conversion, while sample errors were higher but still in the expected range for the
+other two samples. In the leftmost plot, it is clear that NoTarget errors were
+predominant in X6570 and X6602 but not X6597.
+
+* Proof of concept analysis of sample X5085
+We first need to download databases from Annovar's servers to use in the annotation:
+#+begin_src shell
+cd /mnt/d/annovar
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar refGene humandb/
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar avnsp147 humandb/
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar dbnsfp42a humandb/
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar gnomad_exome humandb/
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar gnomad_genome humandb/
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar 1000g2015aug humandb/
+  #./annotate_variation.pl -buildver hg38 -downdb -webfrom annovar clinvar_20220320 humandb/
+#+end_src
+
+[[https://annovar.openbioinformatics.org/en/latest/articles/VCF/][As discussed in Annovar's documentation]], it is recommended to split multi-allelic
+variants into separate lines using bcftools
+#+begin_src shell
+bcftools norm -m-both -o X5085_split.vcf X5085.vcf
+#+end_src
+
+We can now proceed with annotation
+#+begin_src shell
+  /mnt/d/annovar/table_annovar.pl X5085_split.vcf /mnt/d/annovar/humandb/ -buildver hg38 -out X5085 -remove \
+                                -protocol refGene,avsnp147,dbnsfp42a,gnomad_exome,1000g2015aug_all,clinvar_20220320 \
+                                -operation g,f,f,f,f,f -nastring . -vcfinput \
+                                --convertarg "--filter 'pass'" --tempdir "annovar"
+#+end_src
+
+We will use the [[https://github.com/VCCRI/VPOT][Variant Prioritization Ordering Tool]] to analyse the annotated variants,
+which can be installed as follows
+#+begin_src shell
+  git clone https://github.com/VCCRI/VPOT ~/VPOT
+#+end_src
+
+We can then copy the default parameters for VPOT, with changes to the population filters
+to ensure that only variants with an MAF less than 5% in both gnomAD and 1000 Genomes
+are included. Details for how to configure VPOT parameters [[https://github.com/VCCRI/VPOT/tree/master/test_data][can be found here.]] 
+#+begin_src shell
+cat > VPOT_parameters.txt << EOF
+PF	Population_filter	Value PF	gnomad_exome	0.05	LE
+PF	1000g2015aug_all	0.05	LE
+PD	Predictors	Type	Low	Value	Mid	Value	High	Value
+PD	Polyphen2_HDIV_pred	A	B	0	P	2	D	4	-999	1
+PD	Polyphen2_HVAR_pred	A	B	0	P	2	D	4	-999	1
+PD	CADD_phred	N	-998	1	10	0	20	2	20	4
+PD	MCAP	N	0	0	0.025	0	0.025	4
+PD	SIFT_pred	A	T	0	D	2	-999	1
+PD	LRT_pred	A	N	0	U	0	D	2	-999	1
+PD	MutationAssessor_pred	A	N	0	L	0	M	1	H	2	-999	1
+PD	MutationTaster_pred	A	N	0	L	0	A	2	D	3	P	2
+PD	FATHMM_pred	A	T	0	D	2	-999	1
+PD	PROVEAN_pred	A	N	0	D	2	-999	1
+PD	MetaSVM_pred	A	T	0	D	2	-999	1
+PD	GERP++_RS	N	-998	1	4	0	6	1	6	2
+PD	phyloP20way_mammalian	N	-998	1	0.9	0	1	1	1	2
+PD	SiPhy_29way_logOdds	N	-998	1	12	0	16	1	16	2
+VT	Variant_annotation	Exception_variant_types	Value
+VT	ExonicFunc.refGene	splicing	35
+VT	ExonicFunc.refGene	stopgain	50
+VT	ExonicFunc.refGene	stoploss	50
+VT	ExonicFunc.refGene	frameshift_insertion	45
+VT	ExonicFunc.refGene	frameshift_deletion	45
+VT	ExonicFunc.refGene	synonymous_SNV	-28
+VT	VARIANT_TYPE	exonic_nonframeshift_deletion_	100
+VT	VARIANT_TYPE	exonic_stopgain_	200
+GN	Gene Symbol
+GN	Gene.refGene
+#QC	Quality Control	Value
+#QC	Coverage	8
+#QC	Hete_Balance	25
+#VS	Variant Score Threshold	Value
+#VS	Score	14
+EOF
+#+end_src
+
+The VPOT algorithm can then be applied to the sample list, in which we include only one
+sample for now. VPOT requires the sample list to have lines with the vcf filename, a tab
+character and the name of the sample's column in the vcf. I had trouble with this step
+because I didn't include the last column; I eventually realised that all the samples
+have a column called "20" and hence it worked once included in the sample list.
+column 
+#+begin_src shell
+  #echo "X5085.hg38_multianno.vcf	20" > sample_list.txt
+  #python ~/VPOT/VPOT.py priority vpot_ sample_list.txt VPOT_parameters.txt
+  ls -lh | grep "vpot_final" 
+#+end_src
+
+#+RESULTS:
+: -rw-r--r--  1 duncan duncan  7.5G Jun 24 15:57 vpot_final_output_file_1656072194.txt
+ The prioritisation algorithm took 2 hours to complete on my outdated PC, so it is clear
+ that future analyses will need a high performance computer. VPOT provides a summary
+ function to visualise the results of prioritisation
+#+begin_src shell :results output verbatim
+python ~/VPOT/VPOT.py stats vpot vpot_final_output_file_1656072194.txt 50
+#+end_src
+
+#+RESULTS:
+#+begin_example
+#VPOT version 3 - 07/09/2021 
+Variant Statistics - Main
+initial_setup():
+1656327736
+output :  vpotvariant_statistic_file_1656327736.txt
+top score : 70
+
+,*********************************************************************************************
+
+TOTAL STATS FOR - vpot_final_output_file_1656072194.txt
+Total number of samples : 1
+Total number of genes : 4731
+Total number of variants : 2831538
+Total number of non-scoring variants : 2822958
+Total number of scoring variants : 8580
+
+Variants scoring 99 percentage - 1
+Variants scoring 95 percentage - 1
+Variants scoring 90 percentage - 2
+Variants scoring 80 percentage - 181
+Variants scoring 70 percentage - 217
+Variants scoring 60 percentage - 337
+Variants scoring 50 percentage - 337
+Variants scoring 40 percentage - 450
+Variants scoring 30 percentage - 1307
+Variants scoring 20 percentage - 2297
+Variants scoring 10 percentage - 3900
+Variants scoring 1 percentage - 8580
+
+clean_up():
+#+end_example
+
+So only 8580 variants were given a non-zero percentage priority score, which means that
+all the other 2.8 million variants had no annotations included in the prioritisation
+parameters we choose. In future, we may want to automatically exclude non-scoring
+variants, since they have no annotations which can be used to classify them.
+
+Another VPOT function allows us to exclude variants which are not in a gene in a
+provided list. We will use a list of cancer-predisposing genes for this purpose:
+#+begin_src shell
+  python ~/VPOT/VPOT.py genef vpot_ vpot_final_output_file_1656072194.txt gene_list.txt
+#+end_src
+ A quick review of the gene-filtered output revealed that there are many variants which
+ were classified as benign/likely benign; in future, we should exclude this at the
+ filtering stage, but for this example we will filter them out using grep. We also
+ exclude variants without any useful annotations (having a priority score of 0.0)
+
+#+begin_src shell
+  grep -Pv "^0\.0\t" vpot_gene_filtered_output_file_1656079948.txt | \
+  grep -vi "benign" > vpot_trimmed_output.txt
+  wc -l vpot_trimmed_output.txt
+#+end_src
+
+#+RESULTS:
+: 61 vpot_trimmed_output.txt
+
+We can now obtain a list the number of variants present in each gene
+#+begin_src shell :results output verbatim
+   # python ~/VPOT/VPOT.py stats vpot vpot_trimmed_output.txt 1 
+  grep "Number of variants" vpotvariant_statistic_file_1656404075.txt   
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Number of variants in ALK : 3
+Number of variants in ATM : 4
+Number of variants in ATR : 1
+Number of variants in BRCA1 : 1
+Number of variants in BUB1B : 3
+Number of variants in CDH1 : 2
+Number of variants in COL7A1 : 3
+Number of variants in CYLD : 2
+Number of variants in DIS3L2 : 2
+Number of variants in DROSHA : 1
+Number of variants in ENG : 1
+Number of variants in ERCC3 : 2
+Number of variants in ERCC4 : 2
+Number of variants in GPC3 : 2
+Number of variants in JMJD1C : 5
+Number of variants in KIF1B : 2
+Number of variants in PALLD : 1
+Number of variants in PAX5 : 2
+Number of variants in POLE : 3
+Number of variants in RAD51B : 1
+Number of variants in RB1 : 2
+Number of variants in RECQL4 : 2
+Number of variants in RET : 1
+Number of variants in RINT1 : 1
+Number of variants in SETBP1 : 1
+Number of variants in SHOC2 : 6
+Number of variants in TP53 : 1
+Number of variants in TSC1 : 1
+Number of variants in TSHR : 1
+#+end_example
+An initial review of the variant list reveals some promising candidates for pathogenic
+mutations, with the highest variant priority score (59) given to a novel stopgain
+mutation in the ATM gene (g.108365093T>A; NM_001351834: ATM c.T8862A) which has an
+exceptionally high CADD score of 38. A missense variant is also present nearby the
+stopgain mutation (g:108365085C>G) which received a priority score of 28 and is
+classified as a Variant of Uncertain Significance in ClinVar. Both of these variants are
+pictured in IGV in Figure 2. Also notable is the rare missense TP53 variant g.7576633A>G
+(NM_001126114.2: TP53 c.1018A>G) which only scored a 9 but is hypothesised to be
+involved in cancer pathogenesis in this patient.
+
+#+CAPTION: An IGV screenshot showing the two variants of interest in the ATM gene: a stopgain mutation and nonsynonymous SNV upstream.
+#+attr_html: :width 800px
+[[https://i.ibb.co/6ZgJsNt/screengrab.png]]

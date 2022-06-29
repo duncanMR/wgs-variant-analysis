@@ -6,5 +6,8 @@
 *.txt
 *.fasta
 *.dict
+*.html
+*.odt
+data/annovar/*
 data/figs/*
  
