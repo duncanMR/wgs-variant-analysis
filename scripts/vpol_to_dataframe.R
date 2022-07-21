@@ -1,4 +1,5 @@
-library("tidyverse")
+library("readr")
+library("stringr")
 library("data.table")
 
 extract_anno = function(string) {
@@ -8,12 +9,24 @@ extract_anno = function(string) {
   setnames(tbl, as.character(tbl[1]))[2,] #use the first row as col names for the second row
 }
 
-expand_info_column = function(vpot_file) {
-  vpot_data <- fread(vpot_file)
-  dt_list <- sapply(vpot_data$INFO, extract_anno)
-  info <- as.data.table(type_convert(rbindlist(dt_list, use.names=TRUE, fill=TRUE)))
-  cbind(vpot_data[,INFO:=NULL], info)
-}
+#list of variables which should be characters and not factors
+character_vars<-list("GeneDetail.refGene","AAChange.refGene", "Aloft_pred", "Aloft_Confidence",
+                     "Interpro_domain","GTEx_V8_gene", "GTEx_V8_tissue","CLNDISDB")
 
+expand_info_column = function(vpot_data) {
+  DT_list <- sapply(vpot_data$INFO, extract_anno)
+  DT_raw <- as.data.table(type_convert(rbindlist(DT_list, use.names=TRUE, fill=TRUE)))
+  DT <- cbind(vpot_data[,INFO:=NULL], DT_raw)
+  for (j in seq_len(ncol(DT))) {
+    if(class(DT[[j]]) == 'character' && !(names(DT)[j] %in% character_vars))
+      set(DT, j = j, value = as.factor(DT[[j]]))
+  }
+  #setkey(DT,Ranking)
+  setnames(DT, "#CHROM", "CHROM")
+  DT
+}
+#vpot_data <- fread("vpot_filtered.txt")
 #dt_list <- sapply(vpot_data$INFO, extract_anno)
-#dat <- expand_info_column("vpot_filtered.tsv")
+#DT <- expand_info_column(vpol_data)
+
+
