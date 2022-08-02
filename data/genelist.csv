@@ -187,7 +187,7 @@ EPHA7,Clotting,Clotting
 APOC1,Clotting,Clotting
 P2RY12,Clotting,Clotting
 EPHX1,Clotting,Clotting
-FVII,Clotting,Clotting
+F7,Clotting,Clotting
 VKORC1,WarfarinPGX,WarfarinPGX
 CYP2C9,WarfarinPGX,WarfarinPGX
 CYP4F2,WarfarinPGX,WarfarinPGX
@@ -199,10 +199,10 @@ CYP2C8,WarfarinPGX,WarfarinPGX
 CALU,WarfarinPGX,WarfarinPGX
 CYP1A1,WarfarinPGX,WarfarinPGX
 CYP2C19,WarfarinPGX,WarfarinPGX
-FII,InheritedThrombophilia ,InheritedThrombophilia 
-FVIII,InheritedThrombophilia ,InheritedThrombophilia 
-FV,InheritedThrombophilia ,InheritedThrombophilia 
-FXII,InheritedThrombophilia ,InheritedThrombophilia 
-PROC,InheritedThrombophilia ,InheritedThrombophilia 
-PROS1,InheritedThrombophilia ,InheritedThrombophilia 
-SERPIND1,InheritedThrombophilia ,InheritedThrombophilia 
+F2,InheritedThrombophilia,InheritedThrombophilia
+F8,InheritedThrombophilia,InheritedThrombophilia
+F5,InheritedThrombophilia,InheritedThrombophilia
+F12,InheritedThrombophilia,InheritedThrombophilia
+PROC,InheritedThrombophilia,InheritedThrombophilia
+PROS1,InheritedThrombophilia,InheritedThrombophilia
+SERPIND1,InheritedThrombophilia,InheritedThrombophilia
