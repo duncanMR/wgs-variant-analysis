@@ -175,23 +175,34 @@ UROD,,
 WAS,,
 XPA,,
 XPC,,
-CYP2C9,BleedingAndClotting,BleedingAndClotting
-VKORC1,BleedingAndClotting,BleedingAndClotting
-APOB,BleedingAndClotting,BleedingAndClotting
-CYP2C19,BleedingAndClotting,BleedingAndClotting
-CYP4F2,BleedingAndClotting,BleedingAndClotting
-HNF4A,BleedingAndClotting,BleedingAndClotting
-ABCB1,BleedingAndClotting,BleedingAndClotting
-VEGFA,BleedingAndClotting,BleedingAndClotting
-APOE,BleedingAndClotting,BleedingAndClotting
-THBD,BleedingAndClotting,BleedingAndClotting
-CRP,BleedingAndClotting,BleedingAndClotting
-NQO1,BleedingAndClotting,BleedingAndClotting
-GGCX,BleedingAndClotting,BleedingAndClotting
-EPHA7,BleedingAndClotting,BleedingAndClotting
-F5,BleedingAndClotting,BleedingAndClotting
-APOC1,BleedingAndClotting,BleedingAndClotting
-P2RY12,BleedingAndClotting,BleedingAndClotting
-EPHX1,BleedingAndClotting,BleedingAndClotting
-CALU,BleedingAndClotting,BleedingAndClotting
-F7,BleedingAndClotting,BleedingAndClotting
+APOB,Clotting,Clotting
+HNF4A,Clotting,Clotting
+ABCB1,Clotting,Clotting
+VEGFA,Clotting,Clotting
+APOE,Clotting,Clotting
+THBD,Clotting,Clotting
+CRP,Clotting,Clotting
+NQO1,Clotting,Clotting
+EPHA7,Clotting,Clotting
+APOC1,Clotting,Clotting
+P2RY12,Clotting,Clotting
+EPHX1,Clotting,Clotting
+FVII,Clotting,Clotting
+VKORC1,WarfarinPGX,WarfarinPGX
+CYP2C9,WarfarinPGX,WarfarinPGX
+CYP4F2,WarfarinPGX,WarfarinPGX
+CYP2A6,WarfarinPGX,WarfarinPGX
+CYP1A2,WarfarinPGX,WarfarinPGX
+GGCX,WarfarinPGX,WarfarinPGX
+CYP3A4,WarfarinPGX,WarfarinPGX
+CYP2C8,WarfarinPGX,WarfarinPGX
+CALU,WarfarinPGX,WarfarinPGX
+CYP1A1,WarfarinPGX,WarfarinPGX
+CYP2C19,WarfarinPGX,WarfarinPGX
+FII,InheritedThrombophilia ,InheritedThrombophilia 
+FVIII,InheritedThrombophilia ,InheritedThrombophilia 
+FV,InheritedThrombophilia ,InheritedThrombophilia 
+FXII,InheritedThrombophilia ,InheritedThrombophilia 
+PROC,InheritedThrombophilia ,InheritedThrombophilia 
+PROS1,InheritedThrombophilia ,InheritedThrombophilia 
+SERPIND1,InheritedThrombophilia ,InheritedThrombophilia 
