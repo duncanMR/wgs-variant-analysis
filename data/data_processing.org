@@ -359,3 +359,62 @@ involved in cancer pathogenesis in this patient.
 #+CAPTION: An IGV screenshot showing the two variants of interest in the ATM gene: a stopgain mutation and nonsynonymous SNV upstream.
 #+attr_html: :width 800px
 [[https://i.ibb.co/6ZgJsNt/screengrab.png]]
+
+#+begin_src R :session *R:masters*
+    source("../scripts/vpol_to_dataframe.R")
+  vpol_data <- fread("vpot_filtered.txt")
+  DT <- expand_info_column(vpol_data)
+  basevar <- c("Ranking","CHROM","POS","REF","ALT","QUAL","GENE_NAME","ExonicFunc.refGene","CADD_phred")
+  print(DT[1:60,basevar, with=F])
+#+end_src
+
+#+RESULTS:
+| 0.84 | chr11 | 108365093 | T | A | 31.77 | ATM    | stopgain          |   38 |
+|  0.8 | chr10 |  63214614 | A | T | 43.77 | JMJD1C | stopgain          |   35 |
+| 0.43 | chr3  | 4857302 8 | C | G | 31.77 | COL7A1 | nonsynonymous_SNV | 28.1 |
+| 0.41 | chr3  |  48586428 | C | G | 31.77 | COL7A1 | nonsynonymous_SNV | 26.1 |
+| 0.41 | chr10 | 110964645 | A | T | 49.77 | SHOC2  | nonsynonymous_SNV | 26.8 |
+| 0.41 | chr16 |  68823516 | T | A | 31.77 | CDH1   | nonsynonymous_SNV | 26.8 |
+|  0.4 | chr3  |  48573052 | G | C | 43.77 | COL7A1 | nonsynonymous_SNV | 26.1 |
+|  0.4 | chr11 | 108365085 | C | G | 31.77 | ATM    | nonsynonymous_SNV | 24.2 |
+| 0.39 | chr2  | 127293538 | T | A | 31.77 | ERCC3  | nonsynonymous_SNV |   31 |
+| 0.39 | chr10 | 110964627 | T | A | 43.77 | SHOC2  | nonsynonymous_SNV | 28.1 |
+
+* Checking sample coverage
+#+BEGIN_SRC R :session *R:masters*
+  setwd('/mnt/d/masters_data/')
+  library(tidyverse)
+  files_ls <- list.files(pattern="*._DP.txt") 
+  col_names <- c("DP","id","bin","n_genotypes", "frac_genotypes", "n_sites", "frac_sites")
+  get_dp_stats <- function(file) {
+    read.csv(file, col.names = col_names, sep = "\t", header=FALSE) %>%
+      select(-DP,-id) %>% head(-1) %>% type_convert %>%
+      mutate(Sample = factor(gsub("_DP.txt","",file)))
+  }
+  scientific_10 <- function(x) {
+    parse(text=gsub("e", " %*% 10^", scales::scientific_format()(x)))
+  }
+
+
+  df_ls <- lapply(files_ls, get_dp_stats)
+  df <- do.call("rbind", lapply(df_ls, as.data.frame))
+  df %>% filter(bin <= 60) %>% 
+    ggplot(aes(x = bin, y = n_sites, fill = Sample))+
+    geom_col(color="white")+theme_bw()+
+    xlab("Approximate read depth (DP)")+
+    ylab("Number of variants")+
+    theme(text = element_text(size = 20))
+    #geom_smooth(se = FALSE, method = loess)
+  df %>% filter(sample == "X6075") 
+#+END_SRC
+
+#+BEGIN_SRC shell
+  ~/bin/annovar/table_annovar.pl X6602_step2alt.vcf /groups/Pharm/humandb/ -buildver hg19 -out X6602_step3alt -remove \
+                                -protocol avsnp147,dbnsfp42a,gnomad_exome,1000g2015aug_all,gerp++gt2,fathmm,dann,eigen,caddgt10\
+                                -operation f,f,f,f,f,f,f,f,f -nastring . -vcfinput
+#+END_SRC
+
+#+BEGIN_SRC shell
+  ~/bin/annovar/table_annovar.pl X6602_split.vcf /groups/Pharm/humandb/ -buildver hg19 -out X6602_step1_ -remove \
+   -protocol refGene,clinvar_20220320 -operation g,f -nastring . -vcfinput --convertarg "--filter 'pass'"
+#+END_SRC
